@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Boekenzoeker</title>
+<meta name="theme-color" content="#7f2d38">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --accent:#7f2d38;
+    --accent-dark:#5f1f28;
+    --bg:#faf6ef;
+    --card:#ffffff;
+    --text:#2b2320;
+    --muted:#8a7f78;
+    --line:#e8e0d4;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1c1917; --card:#2a2523; --text:#f0e9e2;
+      --muted:#a89c93; --line:#3a332f;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  header{
+    background:var(--accent); color:#fff;
+    padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+    display:flex; align-items:center; gap:10px;
+    position:sticky; top:0; z-index:10;
+    box-shadow:0 1px 4px rgba(0,0,0,.25);
+  }
+  header .logo{font-size:22px; line-height:1}
+  header h1{font-size:18px; margin:0; flex:1; font-weight:600}
+  header button{
+    background:none; border:none; color:#fff; font-size:20px;
+    padding:8px; cursor:pointer; border-radius:8px; line-height:1;
+  }
+  header button:active{background:var(--accent-dark)}
+  main{max-width:640px; margin:0 auto; padding:0 12px 24px}
+
+  /* zoekbalk */
+  .searchwrap{
+    position:sticky; top:calc(48px + env(safe-area-inset-top)); z-index:9;
+    background:var(--bg); padding:12px 0 8px;
+  }
+  .searchbox{position:relative}
+  .searchbox input{
+    width:100%; font-size:18px; padding:14px 44px 14px 16px;
+    border:1.5px solid var(--line); border-radius:14px;
+    background:var(--card); color:var(--text); outline:none;
+  }
+  .searchbox input:focus{border-color:var(--accent)}
+  .searchbox .clear{
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    border:none; background:none; font-size:18px; color:var(--muted);
+    padding:10px; cursor:pointer; display:none;
+  }
+  .statusline{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    font-size:13px; color:var(--muted); padding:8px 4px 0;
+  }
+  .statusline .count{font-weight:600; color:var(--text)}
+  .statusline .spacer{flex:1}
+  .statusline button{
+    border:1px solid var(--line); background:var(--card); color:var(--text);
+    border-radius:10px; padding:6px 10px; font-size:13px; cursor:pointer;
+  }
+  .statusline button:active{background:var(--line)}
+
+  /* resultaten */
+  ul.results{list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:8px}
+  ul.results li{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:12px 14px;
+  }
+  ul.results .title{font-size:16px; font-weight:600; line-height:1.3}
+  ul.results .author{font-size:14px; color:var(--accent); margin-top:2px}
+  @media (prefers-color-scheme: dark){ ul.results .author{color:#e0949e} }
+  ul.results .extra{font-size:13px; color:var(--muted); margin-top:4px; line-height:1.35}
+  .empty{
+    text-align:center; color:var(--muted); padding:40px 16px; font-size:15px;
+  }
+  .notice{
+    margin:12px 0 0; padding:10px 14px; border-radius:12px; font-size:14px;
+    background:#fdecec; color:#8c2f2f; border:1px solid #f3c9c9;
+  }
+  @media (prefers-color-scheme: dark){
+    .notice{background:#3a2323; color:#f0b9b9; border-color:#5a3535}
+  }
+
+  /* instellingen */
+  .setup{padding:18px 4px}
+  .setup h2{font-size:18px; margin:12px 0 4px}
+  .setup p{font-size:14px; color:var(--muted); line-height:1.5; margin:6px 0 14px}
+  .setup label{display:block; font-size:14px; font-weight:600; margin:16px 0 6px}
+  .setup input{
+    width:100%; font-size:16px; padding:12px 14px;
+    border:1.5px solid var(--line); border-radius:12px;
+    background:var(--card); color:var(--text); outline:none;
+  }
+  .setup input:focus{border-color:var(--accent)}
+  .setup .hint{font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.45}
+  .setup .btnrow{display:flex; gap:10px; margin-top:22px}
+  .btn{
+    flex:1; font-size:16px; font-weight:600; padding:14px;
+    border-radius:12px; border:none; cursor:pointer;
+  }
+  .btn.primary{background:var(--accent); color:#fff}
+  .btn.primary:active{background:var(--accent-dark)}
+  .btn.ghost{background:none; border:1.5px solid var(--line); color:var(--text)}
+  .sharebox{
+    margin-top:26px; padding:12px 14px; border:1px dashed var(--line);
+    border-radius:12px; font-size:13px; color:var(--muted);
+  }
+  .sharebox code{
+    display:block; word-break:break-all; margin:8px 0; font-size:12px;
+    color:var(--text); background:var(--bg); padding:8px; border-radius:8px;
+  }
+  .sharebox button{
+    border:1px solid var(--line); background:var(--card); color:var(--text);
+    border-radius:10px; padding:6px 12px; font-size:13px; cursor:pointer;
+  }
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">📚</span>
+  <h1 id="apptitle">Boekenzoeker</h1>
+  <button id="btnSheet" class="hidden" title="Open je lijst in Google Sheets om boeken toe te voegen" aria-label="Open Google Sheet">✏️</button>
+  <button id="btnSettings" title="Instellingen" aria-label="Instellingen">⚙️</button>
+</header>
+<main>
+
+  <!-- Instelscherm -->
+  <section id="setup" class="setup hidden">
+    <h2>Instellingen</h2>
+    <p>Plak hieronder de link van je eigen boekenlijst (Google Spreadsheet).
+       Werkt met de gewone link van je Sheet, of met de link van
+       <em>Bestand&nbsp;▸&nbsp;Delen&nbsp;▸&nbsp;Publiceren op internet</em>.</p>
+
+    <label for="inName">Jouw naam (optioneel)</label>
+    <input id="inName" type="text" placeholder="bijv. Tommy" autocomplete="off">
+
+    <label for="inSheet">Link naar je boekenlijst</label>
+    <input id="inSheet" type="url" placeholder="https://docs.google.com/spreadsheets/…" autocomplete="off" inputmode="url">
+    <div class="hint">Tip: open je Spreadsheet in Google Sheets en kopieer de link uit de adresbalk of via de Delen-knop (zet delen op &ldquo;Iedereen met de link – kan bekijken&rdquo;).</div>
+
+    <div id="setupError" class="notice hidden"></div>
+
+    <div class="btnrow">
+      <button id="btnCancel" class="btn ghost hidden">Annuleren</button>
+      <button id="btnSave" class="btn primary">Opslaan</button>
+    </div>
+
+    <div id="sharebox" class="sharebox hidden">
+      <strong>Deel-link</strong> — stuur deze link naar iemand anders en de app stelt zichzelf in met <em>deze</em> lijst. Voor een eigen lijst: stuur de gewone app-link en laat ze hun eigen Sheet-link plakken.
+      <code id="shareUrl"></code>
+      <button id="btnCopyShare">Kopieer link</button>
+    </div>
+  </section>
+
+  <!-- Zoekscherm -->
+  <section id="app" class="hidden">
+    <div class="searchwrap">
+      <div class="searchbox">
+        <input id="q" type="search" placeholder="Zoek op titel of auteur…" autocomplete="off" autocapitalize="off">
+        <button class="clear" id="btnClear" aria-label="Wissen">✕</button>
+      </div>
+      <div class="statusline">
+        <span class="count" id="count"></span>
+        <span id="updated"></span>
+        <span class="spacer"></span>
+        <button id="btnRefresh">↻ Vernieuwen</button>
+      </div>
+      <div id="loadError" class="notice hidden"></div>
+    </div>
+    <ul class="results" id="results"></ul>
+    <div class="empty hidden" id="empty">Geen boeken gevonden.<br>Dit boek heb je dus nog niet 🙂</div>
+  </section>
+
+</main>
+<script>
+'use strict';
+
+const LS = {
+  sheetRaw: 'bz_sheet_raw',
+  csv:      'bz_csv',
+  edit:     'bz_edit',
+  name:     'bz_naam',
+  data:     'bz_data',
+  updated:  'bz_updated'
+};
+
+const $ = id => document.getElementById(id);
+let books = [];      // {last, first, title, orig, notes, hay}
+let shown = [];
+
+/* ---------- Google Sheets-link interpreteren ---------- */
+function interpretSheetUrl(raw){
+  const url = (raw || '').trim();
+  if(!url) return null;
+  // Gepubliceerde link: .../spreadsheets/d/e/<id>/pub...
+  let m = url.match(/docs\.google\.com\/spreadsheets\/d\/e\/([^/?#]+)/);
+  if(m){
+    const gid = (url.match(/[?&#]gid=(\d+)/) || [])[1];
+    return {
+      csv: 'https://docs.google.com/spreadsheets/d/e/' + m[1] + '/pub?output=csv' + (gid ? '&gid=' + gid : ''),
+      edit: ''
+    };
+  }
+  // Gewone Sheet-link: .../spreadsheets/d/<id>/...
+  m = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if(m){
+    const gid = (url.match(/[?&#]gid=(\d+)/) || [])[1];
+    return {
+      csv: 'https://docs.google.com/spreadsheets/d/' + m[1] + '/gviz/tq?tqx=out:csv' + (gid ? '&gid=' + gid : ''),
+      edit: 'https://docs.google.com/spreadsheets/d/' + m[1] + '/edit'
+    };
+  }
+  // Iets anders (bijv. directe CSV-link): gebruik zoals opgegeven.
+  return { csv: url, edit: '' };
+}
+
+/* ---------- CSV parsen ---------- */
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQ = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(inQ){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else inQ = false;
+      } else field += c;
+    } else if(c === '"'){ inQ = true; }
+    else if(c === ','){ row.push(field); field = ''; }
+    else if(c === '\n'){ row.push(field); field = ''; rows.push(row); row = []; }
+    else if(c !== '\r'){ field += c; }
+  }
+  if(field !== '' || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(v => v && v.trim() !== ''));
+}
+
+function norm(s){
+  return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/['’´`]/g, '').toLowerCase();
+}
+
+/* Kolommen herkennen op headernaam; zonder herkenbare header: vaste volgorde. */
+function toBooks(rows){
+  if(!rows.length) return [];
+  const heads = rows[0].map(norm);
+  let idx = { last: -1, first: -1, title: -1, orig: -1, notes: -1 };
+  heads.forEach((h, i) => {
+    if(h.includes('achternaam')) idx.last = i;
+    else if(h.includes('voornaam')) idx.first = i;
+    else if(h.includes('oorspronkelijk') || h.includes('origine')) idx.orig = i;
+    else if((h.includes('titel') || h.includes('title')) && idx.title < 0) idx.title = i;
+    else if(h.includes('opmerking') || h.includes('notitie') || h.includes('auteur')) {
+      if(h.includes('auteur') && idx.last < 0) idx.last = i;
+      else if(!h.includes('auteur')) idx.notes = i;
+    }
+  });
+  let dataRows;
+  if(idx.title >= 0 || idx.last >= 0){
+    dataRows = rows.slice(1);
+  } else {
+    idx = { last: 0, first: 1, title: 2, orig: 3, notes: 4 };
+    dataRows = rows;
+  }
+  const pick = (r, i) => (i >= 0 && r[i]) ? r[i].trim() : '';
+  return dataRows
+    .map(r => {
+      const b = {
+        last:  pick(r, idx.last),
+        first: pick(r, idx.first),
+        title: pick(r, idx.title),
+        orig:  pick(r, idx.orig),
+        notes: pick(r, idx.notes)
+      };
+      b.hay = norm([b.first, b.last, b.title, b.orig, b.notes].join(' '));
+      return b;
+    })
+    .filter(b => b.title || b.last || b.first);
+}
+
+/* ---------- Data laden & verversen ---------- */
+function loadFromText(text){
+  books = toBooks(parseCSV(text));
+  books.sort((a, b) =>
+    norm(a.last).localeCompare(norm(b.last)) ||
+    norm(a.first).localeCompare(norm(b.first)) ||
+    norm(a.title).localeCompare(norm(b.title)));
+  applySearch();
+}
+
+function fmtUpdated(ts){
+  if(!ts) return '';
+  const d = new Date(+ts);
+  const now = new Date();
+  const time = d.toLocaleTimeString('nl', { hour: '2-digit', minute: '2-digit' });
+  if(d.toDateString() === now.toDateString()) return 'bijgewerkt vandaag om ' + time;
+  return 'bijgewerkt ' + d.toLocaleDateString('nl', { day: 'numeric', month: 'short' }) + ' ' + time;
+}
+
+async function refresh(manual){
+  const csvUrl = localStorage.getItem(LS.csv);
+  if(!csvUrl) return;
+  const err = $('loadError');
+  $('btnRefresh').disabled = true;
+  $('btnRefresh').textContent = 'Bezig…';
+  try{
+    const res = await fetch(csvUrl, { cache: 'no-store' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    if(text.trim().startsWith('<')) throw new Error('De link geeft geen CSV terug');
+    localStorage.setItem(LS.data, text);
+    localStorage.setItem(LS.updated, String(Date.now()));
+    loadFromText(text);
+    $('updated').textContent = fmtUpdated(localStorage.getItem(LS.updated));
+    err.classList.add('hidden');
+  }catch(e){
+    if(manual || !books.length){
+      err.textContent = books.length
+        ? 'Bijwerken lukt niet (geen bereik?). Je ziet de lijst van de vorige keer.'
+        : 'Lijst ophalen lukt niet. Controleer je internetverbinding en de link bij ⚙️ Instellingen.';
+      err.classList.remove('hidden');
+    }
+  }finally{
+    $('btnRefresh').disabled = false;
+    $('btnRefresh').textContent = '↻ Vernieuwen';
+  }
+}
+
+/* ---------- Zoeken & tonen ---------- */
+function applySearch(){
+  const tokens = norm($('q').value).split(/\s+/).filter(Boolean);
+  shown = tokens.length ? books.filter(b => tokens.every(t => b.hay.includes(t))) : books;
+  $('btnClear').style.display = $('q').value ? 'block' : 'none';
+  $('count').textContent = tokens.length
+    ? shown.length + ' van ' + books.length
+    : books.length + ' boeken';
+  render();
+}
+
+function esc(s){
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function render(){
+  const ul = $('results');
+  $('empty').classList.toggle('hidden', shown.length > 0);
+  const html = shown.map(b => {
+    const author = [b.first, b.last].filter(Boolean).join(' ');
+    let extra = '';
+    if(b.orig)  extra += '<div class="extra">Oorspronkelijke titel: ' + esc(b.orig) + '</div>';
+    if(b.notes) extra += '<div class="extra">' + esc(b.notes) + '</div>';
+    return '<li><div class="title">' + esc(b.title || '(zonder titel)') + '</div>' +
+           (author ? '<div class="author">' + esc(author) + '</div>' : '') + extra + '</li>';
+  }).join('');
+  ul.innerHTML = html;
+}
+
+/* ---------- Instellingen ---------- */
+function showSetup(cancellable){
+  $('inName').value = localStorage.getItem(LS.name) || '';
+  $('inSheet').value = localStorage.getItem(LS.sheetRaw) || '';
+  $('setupError').classList.add('hidden');
+  $('btnCancel').classList.toggle('hidden', !cancellable);
+  updateShareBox();
+  $('setup').classList.remove('hidden');
+  $('app').classList.add('hidden');
+}
+
+function showApp(){
+  $('setup').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  const name = localStorage.getItem(LS.name);
+  $('apptitle').textContent = name ? 'Boeken van ' + name : 'Boekenzoeker';
+  $('btnSheet').classList.toggle('hidden', !localStorage.getItem(LS.edit));
+  $('updated').textContent = fmtUpdated(localStorage.getItem(LS.updated));
+  const cached = localStorage.getItem(LS.data);
+  if(cached) loadFromText(cached); else applySearch();
+  refresh(false);
+}
+
+function updateShareBox(){
+  const raw = localStorage.getItem(LS.sheetRaw);
+  if(!raw){ $('sharebox').classList.add('hidden'); return; }
+  const base = location.origin + location.pathname;
+  const name = localStorage.getItem(LS.name) || '';
+  const link = base + '?sheet=' + encodeURIComponent(raw) + (name ? '&naam=' + encodeURIComponent(name) : '');
+  $('shareUrl').textContent = link;
+  $('sharebox').classList.remove('hidden');
+}
+
+function saveSetup(){
+  const raw = $('inSheet').value.trim();
+  const cfg = interpretSheetUrl(raw);
+  const err = $('setupError');
+  if(!cfg){
+    err.textContent = 'Plak eerst de link van je boekenlijst.';
+    err.classList.remove('hidden');
+    return;
+  }
+  const prevCsv = localStorage.getItem(LS.csv);
+  localStorage.setItem(LS.sheetRaw, raw);
+  localStorage.setItem(LS.csv, cfg.csv);
+  localStorage.setItem(LS.edit, cfg.edit || '');
+  localStorage.setItem(LS.name, $('inName').value.trim());
+  if(prevCsv !== cfg.csv){
+    localStorage.removeItem(LS.data);
+    localStorage.removeItem(LS.updated);
+    books = [];
+  }
+  showApp();
+}
+
+/* ---------- Start ---------- */
+function initFromQuery(){
+  const p = new URLSearchParams(location.search);
+  const sheet = p.get('sheet');
+  const name = p.get('naam');
+  if(sheet){
+    const cfg = interpretSheetUrl(sheet);
+    if(cfg){
+      localStorage.setItem(LS.sheetRaw, sheet);
+      localStorage.setItem(LS.csv, cfg.csv);
+      localStorage.setItem(LS.edit, cfg.edit || '');
+      localStorage.removeItem(LS.data);
+      localStorage.removeItem(LS.updated);
+    }
+  }
+  if(name) localStorage.setItem(LS.name, name);
+  if(sheet || name) history.replaceState(null, '', location.pathname);
+}
+
+$('q').addEventListener('input', applySearch);
+$('btnClear').addEventListener('click', () => { $('q').value = ''; applySearch(); $('q').focus(); });
+$('btnRefresh').addEventListener('click', () => refresh(true));
+$('btnSettings').addEventListener('click', () => showSetup(!!localStorage.getItem(LS.csv)));
+$('btnCancel').addEventListener('click', showApp);
+$('btnSave').addEventListener('click', saveSetup);
+$('btnSheet').addEventListener('click', () => {
+  const url = localStorage.getItem(LS.edit);
+  if(url) window.open(url, '_blank');
+});
+$('btnCopyShare').addEventListener('click', async () => {
+  try{
+    await navigator.clipboard.writeText($('shareUrl').textContent);
+    $('btnCopyShare').textContent = 'Gekopieerd ✓';
+    setTimeout(() => { $('btnCopyShare').textContent = 'Kopieer link'; }, 1500);
+  }catch(e){ /* clipboard niet beschikbaar */ }
+});
+
+initFromQuery();
+if(localStorage.getItem(LS.csv)) showApp(); else showSetup(false);
+
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
