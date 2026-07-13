@@ -345,6 +345,8 @@ function toBooks(rows){
         notes: pick(r, idx.notes)
       };
       b.author = [b.first, b.last].filter(Boolean).join(' ');
+      b.authorSort = b.last ? (b.first ? b.last + ', ' + b.first : b.last) : b.first;
+      b.sortKey = norm(b.last || b.first);
       b.akey = norm(b.author);
       b.hay = norm([b.first, b.last, b.title, b.orig, b.notes].join(' '));
       return b;
@@ -361,7 +363,7 @@ function sortBooks(){
       norm(a.first).localeCompare(norm(b.first)));
   } else {
     books.sort((a, b) =>
-      norm(a.last).localeCompare(norm(b.last)) ||
+      a.sortKey.localeCompare(b.sortKey) ||
       norm(a.first).localeCompare(norm(b.first)) ||
       norm(a.title).localeCompare(norm(b.title)));
   }
@@ -474,9 +476,10 @@ function render(){
     let extra = '';
     if(b.orig)  extra += '<div class="extra">Oorspronkelijke titel: ' + highlight(b.orig, curTokens) + '</div>';
     if(b.notes) extra += '<div class="extra">' + highlight(b.notes, curTokens) + '</div>';
+    const disp = (sortMode === 'auteur' && b.last) ? b.authorSort : b.author;
     const author = b.author
       ? '<button class="author" data-akey="' + esc(b.akey) + '" data-label="' + esc(b.author) + '">' +
-        highlight(b.author, curTokens) + '</button>'
+        highlight(disp, curTokens) + '</button>'
       : '';
     return '<li><div class="title">' + highlight(b.title || '(zonder titel)', curTokens) + '</div>' +
            author + extra + '</li>';
@@ -559,7 +562,7 @@ function initFromQuery(){
 }
 
 function updateSortBtn(){
-  $('btnSort').textContent = sortMode === 'titel' ? '↕ Titel' : '↕ Auteur';
+  $('btnSort').textContent = sortMode === 'titel' ? 'A–Z: titel' : 'A–Z: auteur';
 }
 
 $('q').addEventListener('input', applySearch);
