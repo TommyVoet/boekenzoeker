@@ -69,12 +69,34 @@
     font-size:13px; color:var(--muted); padding:8px 4px 0;
   }
   .statusline .count{font-weight:600; color:var(--text)}
-  .statusline .spacer{flex:1}
+  .statusline .actions{display:flex; gap:8px; margin-left:auto}
   .statusline button{
     border:1px solid var(--line); background:var(--card); color:var(--text);
     border-radius:10px; padding:6px 10px; font-size:13px; cursor:pointer;
   }
   .statusline button:active{background:var(--line)}
+
+  /* auteur-filter chip */
+  #authorChip{
+    display:flex; align-items:center; gap:8px; margin:8px 0 0;
+    background:var(--accent); color:#fff; border-radius:999px;
+    padding:6px 6px 6px 14px; font-size:14px; width:fit-content; max-width:100%;
+  }
+  #authorChip .lbl{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  #authorChip button{
+    border:none; background:rgba(255,255,255,.25); color:#fff;
+    width:26px; height:26px; border-radius:50%; font-size:14px;
+    cursor:pointer; flex:none; line-height:1;
+  }
+  #authorChip button:active{background:rgba(255,255,255,.4)}
+
+  /* oplichten van treffers */
+  mark{
+    background:#ffdf7e; color:inherit; border-radius:3px; padding:0 1px;
+  }
+  @media (prefers-color-scheme: dark){
+    mark{background:rgba(224,148,158,.45); color:#fff}
+  }
 
   /* resultaten */
   ul.results{list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:8px}
@@ -83,7 +105,13 @@
     padding:12px 14px;
   }
   ul.results .title{font-size:16px; font-weight:600; line-height:1.3}
-  ul.results .author{font-size:14px; color:var(--accent); margin-top:2px}
+  ul.results .author{
+    font-size:14px; color:var(--accent); margin-top:2px;
+    display:inline-block; border:none; background:none; padding:2px 0;
+    font-family:inherit; text-align:left; cursor:pointer;
+    text-decoration:underline; text-decoration-color:transparent;
+  }
+  ul.results .author:active{text-decoration-color:currentColor}
   @media (prefers-color-scheme: dark){ ul.results .author{color:#e0949e} }
   ul.results .extra{font-size:13px; color:var(--muted); margin-top:4px; line-height:1.35}
   .empty{
@@ -176,11 +204,17 @@
         <input id="q" type="search" placeholder="Zoek op titel of auteur…" autocomplete="off" autocapitalize="off">
         <button class="clear" id="btnClear" aria-label="Wissen">✕</button>
       </div>
+      <div id="authorChip" class="hidden">
+        <span class="lbl"></span>
+        <button id="btnClearAuthor" aria-label="Auteurfilter wissen">✕</button>
+      </div>
       <div class="statusline">
         <span class="count" id="count"></span>
         <span id="updated"></span>
-        <span class="spacer"></span>
-        <button id="btnRefresh">↻ Vernieuwen</button>
+        <span class="actions">
+          <button id="btnSort" title="Sorteervolgorde wisselen"></button>
+          <button id="btnRefresh">↻ Vernieuwen</button>
+        </span>
       </div>
       <div id="loadError" class="notice hidden"></div>
     </div>
@@ -198,12 +232,16 @@ const LS = {
   edit:     'bz_edit',
   name:     'bz_naam',
   data:     'bz_data',
-  updated:  'bz_updated'
+  updated:  'bz_updated',
+  sort:     'bz_sort'
 };
 
 const $ = id => document.getElementById(id);
-let books = [];      // {last, first, title, orig, notes, hay}
+let books = [];              // {last, first, title, orig, notes, hay, akey, author}
 let shown = [];
+let curTokens = [];          // huidige zoekwoorden (voor oplichten)
+let authorFilter = null;     // {akey, label} of null
+let sortMode = localStorage.getItem(LS.sort) === 'titel' ? 'titel' : 'auteur';
 
 /* ---------- Google Sheets-link interpreteren ---------- */
 function interpretSheetUrl(raw){
@@ -287,6 +325,8 @@ function toBooks(rows){
         orig:  pick(r, idx.orig),
         notes: pick(r, idx.notes)
       };
+      b.author = [b.first, b.last].filter(Boolean).join(' ');
+      b.akey = norm(b.author);
       b.hay = norm([b.first, b.last, b.title, b.orig, b.notes].join(' '));
       return b;
     })
@@ -294,12 +334,23 @@ function toBooks(rows){
 }
 
 /* ---------- Data laden & verversen ---------- */
+function sortBooks(){
+  if(sortMode === 'titel'){
+    books.sort((a, b) =>
+      norm(a.title).localeCompare(norm(b.title)) ||
+      norm(a.last).localeCompare(norm(b.last)) ||
+      norm(a.first).localeCompare(norm(b.first)));
+  } else {
+    books.sort((a, b) =>
+      norm(a.last).localeCompare(norm(b.last)) ||
+      norm(a.first).localeCompare(norm(b.first)) ||
+      norm(a.title).localeCompare(norm(b.title)));
+  }
+}
+
 function loadFromText(text){
   books = toBooks(parseCSV(text));
-  books.sort((a, b) =>
-    norm(a.last).localeCompare(norm(b.last)) ||
-    norm(a.first).localeCompare(norm(b.first)) ||
-    norm(a.title).localeCompare(norm(b.title)));
+  sortBooks();
   applySearch();
 }
 
@@ -343,29 +394,73 @@ async function refresh(manual){
 
 /* ---------- Zoeken & tonen ---------- */
 function applySearch(){
-  const tokens = norm($('q').value).split(/\s+/).filter(Boolean);
-  shown = tokens.length ? books.filter(b => tokens.every(t => b.hay.includes(t))) : books;
+  curTokens = norm($('q').value).split(/\s+/).filter(Boolean);
+  shown = books;
+  if(authorFilter) shown = shown.filter(b => b.akey === authorFilter.akey);
+  if(curTokens.length) shown = shown.filter(b => curTokens.every(t => b.hay.includes(t)));
   $('btnClear').style.display = $('q').value ? 'block' : 'none';
-  $('count').textContent = tokens.length
+  const filtering = curTokens.length || authorFilter;
+  $('count').textContent = filtering
     ? shown.length + ' van ' + books.length
     : books.length + ' boeken';
+  const chip = $('authorChip');
+  if(authorFilter){
+    chip.querySelector('.lbl').textContent = 'Auteur: ' + authorFilter.label;
+    chip.classList.remove('hidden');
+  } else {
+    chip.classList.add('hidden');
+  }
   render();
 }
 
 function esc(s){
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* Licht de zoekwoorden op in tekst; accent/hoofdletter/apostrof-ongevoelig.
+   Bouwt een per-teken index-map origineel<->genormaliseerd, escapet daarna
+   elk segment en wikkelt trefferstukken in <mark>. */
+function highlight(text, tokens){
+  if(!tokens || !tokens.length) return esc(text);
+  let normText = '';
+  const map = [];                       // map[i] = index in origineel
+  for(let oi = 0; oi < text.length; oi++){
+    const nc = norm(text[oi]);
+    for(let k = 0; k < nc.length; k++){ normText += nc[k]; map.push(oi); }
+  }
+  const hit = new Array(text.length).fill(false);
+  for(const t of tokens){
+    if(!t) continue;
+    let from = 0, i;
+    while((i = normText.indexOf(t, from)) !== -1){
+      const start = map[i], end = map[i + t.length - 1];
+      for(let o = start; o <= end; o++) hit[o] = true;
+      from = i + t.length;
+    }
+  }
+  let out = '', j = 0;
+  while(j < text.length){
+    const on = hit[j];
+    let seg = '';
+    while(j < text.length && hit[j] === on){ seg += text[j]; j++; }
+    out += on ? '<mark>' + esc(seg) + '</mark>' : esc(seg);
+  }
+  return out;
 }
 
 function render(){
   const ul = $('results');
   $('empty').classList.toggle('hidden', shown.length > 0);
   const html = shown.map(b => {
-    const author = [b.first, b.last].filter(Boolean).join(' ');
     let extra = '';
-    if(b.orig)  extra += '<div class="extra">Oorspronkelijke titel: ' + esc(b.orig) + '</div>';
-    if(b.notes) extra += '<div class="extra">' + esc(b.notes) + '</div>';
-    return '<li><div class="title">' + esc(b.title || '(zonder titel)') + '</div>' +
-           (author ? '<div class="author">' + esc(author) + '</div>' : '') + extra + '</li>';
+    if(b.orig)  extra += '<div class="extra">Oorspronkelijke titel: ' + highlight(b.orig, curTokens) + '</div>';
+    if(b.notes) extra += '<div class="extra">' + highlight(b.notes, curTokens) + '</div>';
+    const author = b.author
+      ? '<button class="author" data-akey="' + esc(b.akey) + '" data-label="' + esc(b.author) + '">' +
+        highlight(b.author, curTokens) + '</button>'
+      : '';
+    return '<li><div class="title">' + highlight(b.title || '(zonder titel)', curTokens) + '</div>' +
+           author + extra + '</li>';
   }).join('');
   ul.innerHTML = html;
 }
@@ -444,9 +539,28 @@ function initFromQuery(){
   if(sheet || name) history.replaceState(null, '', location.pathname);
 }
 
+function updateSortBtn(){
+  $('btnSort').textContent = sortMode === 'titel' ? '↕ Titel' : '↕ Auteur';
+}
+
 $('q').addEventListener('input', applySearch);
 $('btnClear').addEventListener('click', () => { $('q').value = ''; applySearch(); $('q').focus(); });
 $('btnRefresh').addEventListener('click', () => refresh(true));
+$('btnSort').addEventListener('click', () => {
+  sortMode = sortMode === 'titel' ? 'auteur' : 'titel';
+  localStorage.setItem(LS.sort, sortMode);
+  updateSortBtn();
+  sortBooks();
+  applySearch();
+});
+$('results').addEventListener('click', e => {
+  const btn = e.target.closest('.author');
+  if(!btn) return;
+  authorFilter = { akey: btn.dataset.akey, label: btn.dataset.label };
+  window.scrollTo(0, 0);
+  applySearch();
+});
+$('btnClearAuthor').addEventListener('click', () => { authorFilter = null; applySearch(); });
 $('btnSettings').addEventListener('click', () => showSetup(!!localStorage.getItem(LS.csv)));
 $('btnCancel').addEventListener('click', showApp);
 $('btnSave').addEventListener('click', saveSetup);
@@ -462,6 +576,7 @@ $('btnCopyShare').addEventListener('click', async () => {
   }catch(e){ /* clipboard niet beschikbaar */ }
 });
 
+updateSortBtn();
 initFromQuery();
 if(localStorage.getItem(LS.csv)) showApp(); else showSetup(false);
 
