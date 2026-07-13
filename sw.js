@@ -1,6 +1,6 @@
 /* Service worker: cachet de app-bestanden zodat de app ook zonder bereik opent.
    De boekenlijst zelf wordt door de app in localStorage bewaard. */
-const CACHE = 'boekenzoeker-v4';
+const CACHE = 'boekenzoeker-v5';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

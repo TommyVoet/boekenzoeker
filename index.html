@@ -39,12 +39,74 @@
   }
   header .hrow{display:flex; align-items:center; gap:10px}
   header .logo{font-size:22px; line-height:1}
-  header h1{font-size:18px; margin:0; flex:1; font-weight:600}
+  header .title{
+    flex:1; min-width:0; display:flex; align-items:center; gap:6px;
+    background:none; border:none; color:#fff; font-size:18px; font-weight:600;
+    padding:8px 4px; text-align:left; cursor:pointer; line-height:1.2;
+  }
+  header .title #apptitle{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  header .title .chev{font-size:12px; opacity:.85; flex:none}
   header button{
     background:none; border:none; color:#fff; font-size:20px;
     padding:8px; cursor:pointer; border-radius:8px; line-height:1;
   }
   header button:active{background:var(--accent-dark)}
+  header .title:active{background:var(--accent-dark); border-radius:8px}
+
+  /* lijstmenu (wisselen tussen lijsten) */
+  header #listMenu{
+    position:absolute; top:100%; left:8px; right:8px; margin-top:2px;
+    background:var(--card); color:var(--text); border:1px solid var(--line);
+    border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.28);
+    padding:6px; z-index:20; max-height:70vh; overflow:auto;
+  }
+  #listMenu .lm-item{
+    display:flex; align-items:center; gap:8px; width:100%;
+    background:none; border:none; color:var(--text); text-align:left;
+    font-size:15px; padding:11px 12px; border-radius:9px; cursor:pointer;
+  }
+  #listMenu .lm-item:active{background:var(--line)}
+  #listMenu .lm-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  #listMenu .lm-check{color:var(--accent); font-weight:700}
+  #listMenu .lm-add, #listMenu .lm-manage{color:var(--accent); font-weight:600}
+  #listMenu .lm-sep{height:1px; background:var(--line); margin:6px 4px}
+
+  /* tabs (boeken / verlanglijst) */
+  .tabs{display:flex; gap:8px; padding:12px 0 0}
+  .tab{
+    flex:1; padding:10px; border:1px solid var(--line); background:var(--card);
+    color:var(--text); border-radius:12px; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .tab.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+
+  /* verlanglijst */
+  .wishadd{display:flex; flex-direction:column; gap:8px; margin:14px 0 6px}
+  .wishadd input{
+    width:100%; font-size:16px; padding:12px 14px;
+    border:1.5px solid var(--line); border-radius:12px;
+    background:var(--card); color:var(--text); outline:none;
+  }
+  .wishadd input:focus{border-color:var(--accent)}
+  .wishadd .btn{flex:none}
+  .wishrow{display:flex; align-items:flex-start; gap:10px}
+  .wishrow .wishmain{flex:1; min-width:0}
+  .wishdel{
+    border:none; background:none; color:var(--muted); font-size:18px;
+    cursor:pointer; padding:4px 6px; flex:none; line-height:1;
+  }
+  .wishdel:active{color:var(--text)}
+
+  /* hartje op resultaatkaartjes */
+  #results li{position:relative; padding-right:42px}
+  .wish{
+    position:absolute; top:6px; right:6px; border:none; background:none;
+    font-size:20px; line-height:1; cursor:pointer; color:var(--muted); padding:6px;
+  }
+  .wish.on{color:#d64535}
+  @media (prefers-color-scheme: dark){ .wish.on{color:#f08a7d} }
+
+  .btn.danger{background:none; border:1.5px solid #d9a0a0; color:#b2453a; margin-top:12px}
+  @media (prefers-color-scheme: dark){ .btn.danger{border-color:#7a4a4a; color:#f0a99f} }
   main{max-width:640px; margin:0 auto; padding:0 12px 24px}
 
   /* zoekbalk */
@@ -164,16 +226,17 @@
 <header>
   <div class="hrow">
     <span class="logo">📚</span>
-    <h1 id="apptitle">Boekenzoeker</h1>
+    <button id="btnTitle" class="title"><span id="apptitle">Boekenzoeker</span><span class="chev" id="titleChev"></span></button>
     <button id="btnSheet" class="hidden" title="Open je lijst in Google Sheets om boeken toe te voegen" aria-label="Open Google Sheet">✏️</button>
     <button id="btnSettings" title="Instellingen" aria-label="Instellingen">⚙️</button>
   </div>
+  <div id="listMenu" class="hidden"></div>
 </header>
 <main>
 
   <!-- Instelscherm -->
   <section id="setup" class="setup hidden">
-    <h2>Instellingen</h2>
+    <h2 id="setupTitle">Instellingen</h2>
     <p>Plak hieronder de link van je eigen boekenlijst (Google Spreadsheet).
        Werkt met de gewone link van je Sheet, of met de link van
        <em>Bestand&nbsp;▸&nbsp;Delen&nbsp;▸&nbsp;Publiceren op internet</em>.</p>
@@ -191,6 +254,7 @@
       <button id="btnCancel" class="btn ghost hidden">Annuleren</button>
       <button id="btnSave" class="btn primary">Opslaan</button>
     </div>
+    <button id="btnDelete" class="btn danger hidden">Verwijder deze lijst</button>
 
     <div id="sharebox" class="sharebox hidden">
       <strong>Deel-link</strong> — stuur deze link naar iemand anders en de app stelt zichzelf in met <em>deze</em> lijst. Voor een eigen lijst: stuur de gewone app-link en laat ze hun eigen Sheet-link plakken.
@@ -201,6 +265,11 @@
 
   <!-- Zoekscherm -->
   <section id="app" class="hidden">
+    <div class="tabs">
+      <button id="tabBooks" class="tab active">Mijn boeken</button>
+      <button id="tabWish" class="tab">Wil ik nog <span id="wishCount"></span></button>
+    </div>
+    <div id="collection">
     <div class="searchwrap">
       <div class="searchbox">
         <input id="q" type="search" placeholder="Zoek op titel of auteur…" autocomplete="off" autocapitalize="off">
@@ -222,6 +291,18 @@
     </div>
     <ul class="results" id="results"></ul>
     <div class="empty hidden" id="empty">Geen boeken gevonden.<br>Dit boek heb je dus nog niet 🙂</div>
+    </div><!-- /collection -->
+
+    <div id="wishlist" class="hidden">
+      <div class="wishadd">
+        <input id="wishTitle" type="text" placeholder="Titel" autocomplete="off">
+        <input id="wishAuthor" type="text" placeholder="Auteur (optioneel)" autocomplete="off">
+        <button id="wishAddBtn" class="btn primary">Toevoegen aan verlanglijst</button>
+      </div>
+      <div class="statusline"><span class="count" id="wishCountLine"></span></div>
+      <ul class="results" id="wishItems"></ul>
+      <div class="empty hidden" id="wishEmpty">Nog niets op je verlanglijst.<br>Voeg boeken toe die je nog zoekt 🔎</div>
+    </div>
   </section>
 
 </main>
@@ -229,13 +310,11 @@
 'use strict';
 
 const LS = {
-  sheetRaw: 'bz_sheet_raw',
-  csv:      'bz_csv',
-  edit:     'bz_edit',
-  name:     'bz_naam',
-  data:     'bz_data',
-  updated:  'bz_updated',
-  sort:     'bz_sort'
+  // legacy éénlijst-sleutels (alleen nog voor migratie):
+  sheetRaw: 'bz_sheet_raw', csv: 'bz_csv', edit: 'bz_edit', name: 'bz_naam',
+  data: 'bz_data', updated: 'bz_updated',
+  // huidig model:
+  sort: 'bz_sort', sources: 'bz_sources', active: 'bz_active', wish: 'bz_wish'
 };
 
 const $ = id => document.getElementById(id);
@@ -244,6 +323,108 @@ let shown = [];
 let curTokens = [];          // huidige zoekwoorden (voor oplichten)
 let authorFilter = null;     // {akey, label} of null
 let sortMode = localStorage.getItem(LS.sort) === 'titel' ? 'titel' : 'auteur';
+let editingId = null;        // id van de lijst die in het instelscherm bewerkt wordt (null = nieuw)
+
+/* ---------- Lijsten (bronnen) ---------- */
+function getSources(){ try{ return JSON.parse(localStorage.getItem(LS.sources)) || []; }catch(e){ return []; } }
+function setSources(a){ localStorage.setItem(LS.sources, JSON.stringify(a)); }
+function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function dataKey(id){ return 'bz_data_' + id; }
+function updKey(id){ return 'bz_upd_' + id; }
+function activeSource(){
+  const a = getSources();
+  if(!a.length) return null;
+  const id = localStorage.getItem(LS.active);
+  return a.find(s => s.id === id) || a[0];
+}
+function upsertSource(src){
+  const a = getSources();
+  const i = a.findIndex(s => s.id === src.id);
+  if(i >= 0) a[i] = src; else a.push(src);
+  setSources(a);
+}
+function deleteSource(id){
+  setSources(getSources().filter(s => s.id !== id));
+  localStorage.removeItem(dataKey(id));
+  localStorage.removeItem(updKey(id));
+}
+function setActiveList(id){
+  localStorage.setItem(LS.active, id);
+  closeListMenu();
+  authorFilter = null;
+  $('q').value = '';
+  showApp();
+}
+function migrate(){
+  if(localStorage.getItem(LS.sources)) return;
+  const csv = localStorage.getItem(LS.csv);
+  if(csv){
+    const id = newId();
+    setSources([{ id,
+      name: localStorage.getItem(LS.name) || '',
+      sheetRaw: localStorage.getItem(LS.sheetRaw) || '',
+      csv, edit: localStorage.getItem(LS.edit) || '' }]);
+    localStorage.setItem(LS.active, id);
+    const d = localStorage.getItem(LS.data);    if(d) localStorage.setItem(dataKey(id), d);
+    const u = localStorage.getItem(LS.updated); if(u) localStorage.setItem(updKey(id), u);
+    ['sheetRaw','csv','edit','name','data','updated'].forEach(k => localStorage.removeItem(LS[k]));
+  } else {
+    setSources([]);
+  }
+}
+
+/* ---------- Verlanglijst ("wil ik nog"), globaal per toestel ---------- */
+function getWish(){ try{ return JSON.parse(localStorage.getItem(LS.wish)) || []; }catch(e){ return []; } }
+function setWish(a){ localStorage.setItem(LS.wish, JSON.stringify(a)); }
+function wishKey(t, a){ return norm(t) + '|' + norm(a); }
+function isWished(t, a){ const k = wishKey(t, a); return getWish().some(w => wishKey(w.title, w.author) === k); }
+function addWish(item){
+  if(!item.title && !item.author) return false;
+  if(isWished(item.title, item.author)) return false;
+  const a = getWish();
+  a.push({ title: item.title || '', author: item.author || '', note: item.note || '', ts: Date.now() });
+  setWish(a); updateWishCount(); return true;
+}
+function removeWish(key){
+  setWish(getWish().filter(w => wishKey(w.title, w.author) !== key));
+  updateWishCount();
+}
+function updateWishCount(){
+  const n = getWish().length;
+  $('wishCount').textContent = n ? '(' + n + ')' : '';
+}
+function renderWish(){
+  const a = getWish().slice().sort((x, y) => y.ts - x.ts);
+  $('wishEmpty').classList.toggle('hidden', a.length > 0);
+  $('wishCountLine').textContent = a.length ? (a.length === 1 ? '1 boek' : a.length + ' boeken') : '';
+  $('wishItems').innerHTML = a.map(w => {
+    const k = wishKey(w.title, w.author);
+    const author = w.author ? '<div class="extra">' + esc(w.author) + '</div>' : '';
+    const note = w.note ? '<div class="extra">' + esc(w.note) + '</div>' : '';
+    return '<li><div class="wishrow"><div class="wishmain">' +
+      '<div class="title">' + esc(w.title || '(zonder titel)') + '</div>' + author + note +
+      '</div><button class="wishdel" data-key="' + esc(k) + '" aria-label="Verwijderen">✕</button></div></li>';
+  }).join('');
+  updateWishCount();
+}
+
+/* ---------- Lijstmenu ---------- */
+function renderListMenu(){
+  const src = activeSource();
+  let h = '';
+  getSources().forEach(s => {
+    h += '<button class="lm-item" data-id="' + esc(s.id) + '">' +
+      '<span class="lm-name">' + esc(s.name || 'Naamloze lijst') + '</span>' +
+      (src && s.id === src.id ? '<span class="lm-check">✓</span>' : '') + '</button>';
+  });
+  if(getSources().length) h += '<div class="lm-sep"></div>';
+  h += '<button class="lm-item lm-add" data-act="add">＋ Nieuwe lijst</button>';
+  if(src) h += '<button class="lm-item lm-manage" data-act="manage">⚙ Beheer huidige lijst</button>';
+  $('listMenu').innerHTML = h;
+}
+function openListMenu(){ renderListMenu(); $('listMenu').classList.remove('hidden'); }
+function closeListMenu(){ $('listMenu').classList.add('hidden'); }
+function toggleListMenu(){ $('listMenu').classList.contains('hidden') ? openListMenu() : closeListMenu(); }
 
 /* ---------- Google Sheets-link interpreteren ---------- */
 function interpretSheetUrl(raw){
@@ -368,20 +549,20 @@ function fmtUpdated(ts){
 }
 
 async function refresh(manual){
-  const csvUrl = localStorage.getItem(LS.csv);
-  if(!csvUrl) return;
+  const src = activeSource();
+  if(!src || !src.csv) return;
   const err = $('loadError');
   $('btnRefresh').disabled = true;
   $('btnRefresh').textContent = 'Bezig…';
   try{
-    const res = await fetch(csvUrl, { cache: 'no-store' });
+    const res = await fetch(src.csv, { cache: 'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     if(text.trim().startsWith('<')) throw new Error('De link geeft geen CSV terug');
-    localStorage.setItem(LS.data, text);
-    localStorage.setItem(LS.updated, String(Date.now()));
+    localStorage.setItem(dataKey(src.id), text);
+    localStorage.setItem(updKey(src.id), String(Date.now()));
     loadFromText(text);
-    $('updated').textContent = fmtUpdated(localStorage.getItem(LS.updated));
+    $('updated').textContent = fmtUpdated(localStorage.getItem(updKey(src.id)));
     err.classList.add('hidden');
   }catch(e){
     if(manual || !books.length){
@@ -455,6 +636,7 @@ function highlight(text, tokens){
 function render(){
   const ul = $('results');
   $('empty').classList.toggle('hidden', shown.length > 0);
+  const wishSet = new Set(getWish().map(w => wishKey(w.title, w.author)));
   const html = shown.map(b => {
     let extra = '';
     if(b.orig)  extra += '<div class="extra">Oorspronkelijke titel: ' + highlight(b.orig, curTokens) + '</div>';
@@ -464,19 +646,39 @@ function render(){
       ? '<button class="author" data-akey="' + esc(b.akey) + '" data-label="' + esc(b.author) + '">' +
         highlight(disp, curTokens) + '</button>'
       : '';
-    return '<li><div class="title">' + highlight(b.title || '(zonder titel)', curTokens) + '</div>' +
+    const on = wishSet.has(wishKey(b.title, b.author));
+    const wish = '<button class="wish' + (on ? ' on' : '') + '" data-title="' + esc(b.title) +
+      '" data-author="' + esc(b.author) + '" aria-label="Op verlanglijst zetten">' + (on ? '♥' : '♡') + '</button>';
+    return '<li>' + wish + '<div class="title">' + highlight(b.title || '(zonder titel)', curTokens) + '</div>' +
            author + extra + '</li>';
   }).join('');
   ul.innerHTML = html;
 }
 
-/* ---------- Instellingen ---------- */
-function showSetup(cancellable){
-  $('inName').value = localStorage.getItem(LS.name) || '';
-  $('inSheet').value = localStorage.getItem(LS.sheetRaw) || '';
+/* ---------- Tabs (boeken / verlanglijst) ---------- */
+function showTab(which){
+  const onBooks = which === 'books';
+  $('collection').classList.toggle('hidden', !onBooks);
+  $('wishlist').classList.toggle('hidden', onBooks);
+  $('tabBooks').classList.toggle('active', onBooks);
+  $('tabWish').classList.toggle('active', !onBooks);
+  if(!onBooks) renderWish();
+}
+
+/* ---------- Instellingen / lijstbeheer ---------- */
+function showSetup(cancellable, id){
+  editingId = id || null;
+  const src = editingId ? getSources().find(s => s.id === editingId) : null;
+  $('inName').value = src ? (src.name || '') : '';
+  $('inSheet').value = src ? (src.sheetRaw || '') : '';
+  $('setupTitle').textContent = editingId ? 'Lijst bewerken'
+    : (getSources().length ? 'Nieuwe lijst toevoegen' : 'Je boekenlijst instellen');
+  $('btnSave').textContent = editingId ? 'Opslaan' : 'Lijst toevoegen';
+  $('btnDelete').classList.toggle('hidden', !editingId);
   $('setupError').classList.add('hidden');
   $('btnCancel').classList.toggle('hidden', !cancellable);
   updateShareBox();
+  closeListMenu();
   $('setup').classList.remove('hidden');
   $('app').classList.add('hidden');
 }
@@ -484,21 +686,25 @@ function showSetup(cancellable){
 function showApp(){
   $('setup').classList.add('hidden');
   $('app').classList.remove('hidden');
-  const name = localStorage.getItem(LS.name);
+  const src = activeSource();
+  const name = src ? src.name : '';
   $('apptitle').textContent = name ? 'Boeken van ' + name : 'Boekenzoeker';
-  $('btnSheet').classList.toggle('hidden', !localStorage.getItem(LS.edit));
-  $('updated').textContent = fmtUpdated(localStorage.getItem(LS.updated));
-  const cached = localStorage.getItem(LS.data);
-  if(cached) loadFromText(cached); else applySearch();
+  $('titleChev').textContent = getSources().length ? ' ▾' : '';
+  $('btnSheet').classList.toggle('hidden', !(src && src.edit));
+  $('updated').textContent = src ? fmtUpdated(localStorage.getItem(updKey(src.id))) : '';
+  const cached = src ? localStorage.getItem(dataKey(src.id)) : null;
+  if(cached){ loadFromText(cached); } else { books = []; applySearch(); }
   refresh(false);
+  updateWishCount();
+  showTab('books');
 }
 
 function updateShareBox(){
-  const raw = localStorage.getItem(LS.sheetRaw);
-  if(!raw){ $('sharebox').classList.add('hidden'); return; }
+  const src = editingId ? getSources().find(s => s.id === editingId) : activeSource();
+  if(!src || !src.sheetRaw){ $('sharebox').classList.add('hidden'); return; }
   const base = location.origin + location.pathname;
-  const name = localStorage.getItem(LS.name) || '';
-  const link = base + '?sheet=' + encodeURIComponent(raw) + (name ? '&naam=' + encodeURIComponent(name) : '');
+  const link = base + '?sheet=' + encodeURIComponent(src.sheetRaw) +
+    (src.name ? '&naam=' + encodeURIComponent(src.name) : '');
   $('shareUrl').textContent = link;
   $('sharebox').classList.remove('hidden');
 }
@@ -512,17 +718,34 @@ function saveSetup(){
     err.classList.remove('hidden');
     return;
   }
-  const prevCsv = localStorage.getItem(LS.csv);
-  localStorage.setItem(LS.sheetRaw, raw);
-  localStorage.setItem(LS.csv, cfg.csv);
-  localStorage.setItem(LS.edit, cfg.edit || '');
-  localStorage.setItem(LS.name, $('inName').value.trim());
+  const src = editingId
+    ? (getSources().find(s => s.id === editingId) || { id: editingId })
+    : { id: newId() };
+  const prevCsv = src.csv;
+  src.name = $('inName').value.trim();
+  src.sheetRaw = raw;
+  src.csv = cfg.csv;
+  src.edit = cfg.edit || '';
+  upsertSource(src);
+  localStorage.setItem(LS.active, src.id);
   if(prevCsv !== cfg.csv){
-    localStorage.removeItem(LS.data);
-    localStorage.removeItem(LS.updated);
+    localStorage.removeItem(dataKey(src.id));
+    localStorage.removeItem(updKey(src.id));
     books = [];
   }
+  editingId = null;
   showApp();
+}
+
+function deleteCurrentList(){
+  if(!editingId) return;
+  const src = getSources().find(s => s.id === editingId);
+  if(!confirm('Lijst "' + ((src && src.name) || 'zonder naam') + '" verwijderen? De boeken zelf (in Google Sheets) blijven bestaan.')) return;
+  deleteSource(editingId);
+  editingId = null;
+  const rest = getSources();
+  if(rest.length){ localStorage.setItem(LS.active, rest[0].id); showApp(); }
+  else { localStorage.removeItem(LS.active); showSetup(false); }
 }
 
 /* ---------- Start ---------- */
@@ -533,14 +756,20 @@ function initFromQuery(){
   if(sheet){
     const cfg = interpretSheetUrl(sheet);
     if(cfg){
-      localStorage.setItem(LS.sheetRaw, sheet);
-      localStorage.setItem(LS.csv, cfg.csv);
-      localStorage.setItem(LS.edit, cfg.edit || '');
-      localStorage.removeItem(LS.data);
-      localStorage.removeItem(LS.updated);
+      const existing = getSources().find(s => s.csv === cfg.csv);
+      if(existing){
+        if(name){ existing.name = name; upsertSource(existing); }
+        localStorage.setItem(LS.active, existing.id);
+      } else {
+        const src = { id: newId(), name: name || '', sheetRaw: sheet, csv: cfg.csv, edit: cfg.edit || '' };
+        upsertSource(src);
+        localStorage.setItem(LS.active, src.id);
+      }
     }
+  } else if(name){
+    const s = activeSource();
+    if(s){ s.name = name; upsertSource(s); }
   }
-  if(name) localStorage.setItem(LS.name, name);
   if(sheet || name) history.replaceState(null, '', location.pathname);
 }
 
@@ -559,6 +788,15 @@ $('btnSort').addEventListener('click', () => {
   applySearch();
 });
 $('results').addEventListener('click', e => {
+  const w = e.target.closest('.wish');
+  if(w){
+    const t = w.dataset.title, a = w.dataset.author;
+    if(isWished(t, a)) removeWish(wishKey(t, a)); else addWish({ title: t, author: a });
+    const on = isWished(t, a);
+    w.classList.toggle('on', on);
+    w.textContent = on ? '♥' : '♡';
+    return;
+  }
   const btn = e.target.closest('.author');
   if(!btn) return;
   authorFilter = { akey: btn.dataset.akey, label: btn.dataset.label };
@@ -566,12 +804,56 @@ $('results').addEventListener('click', e => {
   applySearch();
 });
 $('btnClearAuthor').addEventListener('click', () => { authorFilter = null; applySearch(); });
-$('btnSettings').addEventListener('click', () => showSetup(!!localStorage.getItem(LS.csv)));
-$('btnCancel').addEventListener('click', showApp);
+
+/* lijsten */
+$('btnTitle').addEventListener('click', e => { e.stopPropagation(); toggleListMenu(); });
+$('listMenu').addEventListener('click', e => {
+  const it = e.target.closest('.lm-item');
+  if(!it) return;
+  const act = it.dataset.act;
+  if(act === 'add'){ showSetup(true); return; }
+  if(act === 'manage'){ const s = activeSource(); showSetup(true, s && s.id); return; }
+  if(it.dataset.id) setActiveList(it.dataset.id);
+});
+document.addEventListener('click', e => {
+  if($('listMenu').classList.contains('hidden')) return;
+  if(e.target.closest('#listMenu') || e.target.closest('#btnTitle')) return;
+  closeListMenu();
+});
+
+/* tabs */
+$('tabBooks').addEventListener('click', () => showTab('books'));
+$('tabWish').addEventListener('click', () => showTab('wish'));
+
+/* verlanglijst */
+$('wishAddBtn').addEventListener('click', () => {
+  const t = $('wishTitle').value.trim(), a = $('wishAuthor').value.trim();
+  if(!t && !a) return;
+  addWish({ title: t, author: a });
+  $('wishTitle').value = ''; $('wishAuthor').value = '';
+  renderWish(); $('wishTitle').focus();
+});
+['wishTitle', 'wishAuthor'].forEach(id => $(id).addEventListener('keydown', e => {
+  if(e.key === 'Enter') $('wishAddBtn').click();
+}));
+$('wishItems').addEventListener('click', e => {
+  const d = e.target.closest('.wishdel');
+  if(!d) return;
+  removeWish(d.dataset.key);
+  renderWish();
+});
+
+/* instellingen / lijstbeheer */
+$('btnSettings').addEventListener('click', () => {
+  const s = activeSource();
+  showSetup(!!s, s && s.id);
+});
+$('btnCancel').addEventListener('click', () => { editingId = null; showApp(); });
 $('btnSave').addEventListener('click', saveSetup);
+$('btnDelete').addEventListener('click', deleteCurrentList);
 $('btnSheet').addEventListener('click', () => {
-  const url = localStorage.getItem(LS.edit);
-  if(url) window.open(url, '_blank');
+  const src = activeSource();
+  if(src && src.edit) window.open(src.edit, '_blank');
 });
 $('btnCopyShare').addEventListener('click', async () => {
   try{
@@ -581,9 +863,11 @@ $('btnCopyShare').addEventListener('click', async () => {
   }catch(e){ /* clipboard niet beschikbaar */ }
 });
 
-updateSortBtn();
+migrate();
 initFromQuery();
-if(localStorage.getItem(LS.csv)) showApp(); else showSetup(false);
+updateSortBtn();
+updateWishCount();
+if(activeSource()) showApp(); else showSetup(false);
 
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
   navigator.serviceWorker.register('sw.js');
