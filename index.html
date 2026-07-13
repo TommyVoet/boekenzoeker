@@ -64,6 +64,18 @@
     border:none; background:none; font-size:18px; color:var(--muted);
     padding:10px; cursor:pointer; display:none;
   }
+  /* delicate rozenrand om de zoekbalk — puur decoratief, geen hinder */
+  .searchbox::before,
+  .searchbox::after{
+    content:""; position:absolute; top:-12px; width:38px; height:38px;
+    background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2040%2040'%20fill='none'%3E%3Cpath%20d='M20%2025%20C15%2025%2011%2022%2010%2017%20C15%2017%2019%2020%2020%2025%20Z'%20fill='%239aa588'/%3E%3Cpath%20d='M20%2025%20C25%2025%2029%2022%2030%2017%20C25%2017%2021%2020%2020%2025%20Z'%20fill='%239aa588'/%3E%3Cpath%20d='M20%2020%20L20%2031'%20stroke='%238a9a7e'%20stroke-width='1.4'%20stroke-linecap='round'/%3E%3Cpath%20d='M27%2029%20C25%2026%2029%2024%2030%2027%20C31%2029%2028%2031%2027%2029%20Z'%20fill='%23cf9aa3'/%3E%3Ccircle%20cx='20'%20cy='15'%20r='9'%20fill='%23c98b96'/%3E%3Cpath%20d='M20%208%20C14%208%2012%2014%2016%2017%20C20%2020%2026%2017%2025%2012%20C24%208%2019%207%2016%2011'%20stroke='%23a4545f'%20stroke-width='1.4'%20fill='none'%20stroke-linecap='round'/%3E%3Ccircle%20cx='20'%20cy='15'%20r='3'%20fill='none'%20stroke='%23a4545f'%20stroke-width='1.1'/%3E%3C/svg%3E") no-repeat center/contain;
+    opacity:.72; pointer-events:none; z-index:2;
+  }
+  .searchbox::before{left:-10px}
+  .searchbox::after{right:-10px; transform:scaleX(-1)}
+  @media (prefers-color-scheme: dark){
+    .searchbox::before, .searchbox::after{opacity:.55}
+  }
   .statusline{
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     font-size:13px; color:var(--muted); padding:8px 4px 0;
