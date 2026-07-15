@@ -8,6 +8,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --accent:#e0218a;
@@ -27,17 +30,29 @@
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-family:'Nunito',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     background:var(--bg); color:var(--text);
     padding-bottom:env(safe-area-inset-bottom);
   }
+  /* speelse afgeronde koppen/knoppen */
+  header .title, .setup h2, .stats h3, .tab, .btn, .stattile .num,
+  #surprise .slabel, ul.results .title, #surprise .title{
+    font-family:'Fredoka','Nunito',system-ui,sans-serif;
+  }
   header{
-    background:var(--accent); color:#fff;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.30) 0%, rgba(255,255,255,.06) 42%, rgba(0,0,0,.07) 100%),
+      linear-gradient(120deg, #ff4da6 0%, #e0218a 58%, #cc1a7d 100%);
+    color:#fff;
     padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
     position:sticky; top:0; z-index:10;
-    box-shadow:0 1px 4px rgba(0,0,0,.25);
+    box-shadow:0 2px 8px rgba(224,33,138,.35);
   }
-  header .hrow{display:flex; align-items:center; gap:10px}
+  header .hrow{display:flex; align-items:center; gap:10px; position:relative; z-index:1}
+  header .deco{position:absolute; pointer-events:none; z-index:0; color:#fff; user-select:none}
+  header .d1{top:5px; left:46%; font-size:13px; opacity:.4}
+  header .d2{bottom:4px; right:78px; font-size:13px; opacity:.35}
+  header .d3{top:8px; right:150px; font-size:10px; opacity:.3}
   header .logo{font-size:22px; line-height:1}
   header .title{
     flex:1; min-width:0; display:flex; align-items:center; gap:6px;
@@ -266,6 +281,9 @@
 </head>
 <body>
 <header>
+  <span class="deco d1" aria-hidden="true">✨</span>
+  <span class="deco d2" aria-hidden="true">💖</span>
+  <span class="deco d3" aria-hidden="true">✨</span>
   <div class="hrow">
     <span class="logo">📚</span>
     <button id="btnTitle" class="title"><span id="apptitle">Boekenzoeker</span><span class="chev" id="titleChev"></span></button>
