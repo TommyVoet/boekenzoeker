@@ -4,24 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Boekenzoeker</title>
-<meta name="theme-color" content="#cc3277">
+<meta name="theme-color" content="#e0218a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
-    --accent:#cc3277;
-    --accent-dark:#a52860;
-    --bg:#faf6ef;
+    --accent:#e0218a;
+    --accent-dark:#b81a72;
+    --bg:#fff0f7;
     --card:#ffffff;
-    --text:#2b2320;
-    --muted:#8a7f78;
-    --line:#e8e0d4;
+    --text:#3a1e2c;
+    --muted:#9e7f8d;
+    --line:#f6d0e3;
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#1c1917; --card:#2a2523; --text:#f0e9e2;
-      --muted:#a89c93; --line:#3a332f;
+      --bg:#1c1016; --card:#2a1a22; --text:#f7e9f0;
+      --muted:#bb98a8; --line:#43303a;
     }
   }
   *{box-sizing:border-box}
@@ -92,7 +92,7 @@
     border-radius:7px; font-size:12px; font-weight:700; cursor:pointer;
   }
   #azbar button:active{background:var(--accent); color:#fff}
-  @media (prefers-color-scheme: dark){ #azbar button{color:#e0949e} }
+  @media (prefers-color-scheme: dark){ #azbar button{color:#ff8fc4} }
 
   /* verras me-kaart */
   #surprise{
@@ -102,7 +102,7 @@
   #surprise .slabel{font-size:12px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.04em}
   #surprise .title{font-size:17px; font-weight:600; margin-top:4px; line-height:1.3}
   #surprise .author{font-size:14px; color:var(--accent); margin-top:2px}
-  @media (prefers-color-scheme: dark){ #surprise .author{color:#e0949e} }
+  @media (prefers-color-scheme: dark){ #surprise .author{color:#ff8fc4} }
   #surprise .extra{font-size:13px; color:var(--muted); margin-top:4px; line-height:1.35}
   #surprise .srow{display:flex; gap:10px; margin-top:12px}
   #surprise .srow button{
@@ -127,7 +127,7 @@
     border:1px solid var(--line); border-radius:10px; padding:8px 12px; font-size:14px;
   }
   .toplist .cnt{margin-left:auto; font-weight:700; color:var(--accent)}
-  @media (prefers-color-scheme: dark){ .toplist .cnt{color:#e0949e} }
+  @media (prefers-color-scheme: dark){ .toplist .cnt{color:#ff8fc4} }
   .stats .goodnews{color:var(--muted); font-size:14px; padding:6px 2px}
 
   /* verlanglijst */
@@ -146,15 +146,6 @@
     cursor:pointer; padding:4px 6px; flex:none; line-height:1;
   }
   .wishdel:active{color:var(--text)}
-
-  /* hartje op resultaatkaartjes */
-  #results li{position:relative; padding-right:42px}
-  .wish{
-    position:absolute; top:6px; right:6px; border:none; background:none;
-    font-size:20px; line-height:1; cursor:pointer; color:var(--muted); padding:6px;
-  }
-  .wish.on{color:#d64535}
-  @media (prefers-color-scheme: dark){ .wish.on{color:#f08a7d} }
 
   .btn.danger{background:none; border:1.5px solid #d9a0a0; color:#b2453a; margin-top:12px}
   @media (prefers-color-scheme: dark){ .btn.danger{border-color:#7a4a4a; color:#f0a99f} }
@@ -205,10 +196,10 @@
 
   /* oplichten van treffers */
   mark{
-    background:#ffdf7e; color:inherit; border-radius:3px; padding:0 1px;
+    background:#ffd0ea; color:inherit; border-radius:3px; padding:0 1px;
   }
   @media (prefers-color-scheme: dark){
-    mark{background:rgba(224,148,158,.45); color:#fff}
+    mark{background:rgba(255,120,190,.45); color:#fff}
   }
 
   /* resultaten */
@@ -225,7 +216,7 @@
     text-decoration:underline; text-decoration-color:transparent;
   }
   ul.results .author:active{text-decoration-color:currentColor}
-  @media (prefers-color-scheme: dark){ ul.results .author{color:#e0949e} }
+  @media (prefers-color-scheme: dark){ ul.results .author{color:#ff8fc4} }
   ul.results .extra{font-size:13px; color:var(--muted); margin-top:4px; line-height:1.35}
   .empty{
     text-align:center; color:var(--muted); padding:40px 16px; font-size:15px;
@@ -695,7 +686,6 @@ function highlight(text, tokens){
 function render(){
   const ul = $('results');
   $('empty').classList.toggle('hidden', shown.length > 0);
-  const wishSet = new Set(getWish().map(w => wishKey(w.title, w.author)));
   const html = shown.map(b => {
     let extra = '';
     if(b.orig)  extra += '<div class="extra">Oorspronkelijke titel: ' + highlight(b.orig, curTokens) + '</div>';
@@ -705,10 +695,7 @@ function render(){
       ? '<button class="author" data-akey="' + esc(b.akey) + '" data-label="' + esc(b.author) + '">' +
         highlight(disp, curTokens) + '</button>'
       : '';
-    const on = wishSet.has(wishKey(b.title, b.author));
-    const wish = '<button class="wish' + (on ? ' on' : '') + '" data-title="' + esc(b.title) +
-      '" data-author="' + esc(b.author) + '" aria-label="Op verlanglijst zetten">' + (on ? '♥' : '♡') + '</button>';
-    return '<li>' + wish + '<div class="title">' + highlight(b.title || '(zonder titel)', curTokens) + '</div>' +
+    return '<li><div class="title">' + highlight(b.title || '(zonder titel)', curTokens) + '</div>' +
            author + extra + '</li>';
   }).join('');
   ul.innerHTML = html;
@@ -921,15 +908,6 @@ $('btnSort').addEventListener('click', () => {
   applySearch();
 });
 $('results').addEventListener('click', e => {
-  const w = e.target.closest('.wish');
-  if(w){
-    const t = w.dataset.title, a = w.dataset.author;
-    if(isWished(t, a)) removeWish(wishKey(t, a)); else addWish({ title: t, author: a });
-    const on = isWished(t, a);
-    w.classList.toggle('on', on);
-    w.textContent = on ? '♥' : '♡';
-    return;
-  }
   const btn = e.target.closest('.author');
   if(!btn) return;
   authorFilter = { akey: btn.dataset.akey, label: btn.dataset.label };
