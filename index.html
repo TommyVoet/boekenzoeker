@@ -71,13 +71,64 @@
   #listMenu .lm-add, #listMenu .lm-manage{color:var(--accent); font-weight:600}
   #listMenu .lm-sep{height:1px; background:var(--line); margin:6px 4px}
 
-  /* tabs (boeken / verlanglijst) */
-  .tabs{display:flex; gap:8px; padding:12px 0 0}
+  /* tabs (boeken / verlanglijst / cijfers) */
+  .tabs{display:flex; gap:6px; padding:12px 0 0}
   .tab{
-    flex:1; padding:10px; border:1px solid var(--line); background:var(--card);
-    color:var(--text); border-radius:12px; font-size:14px; font-weight:600; cursor:pointer;
+    flex:1; padding:10px 6px; border:1px solid var(--line); background:var(--card);
+    color:var(--text); border-radius:12px; font-size:13px; font-weight:600;
+    cursor:pointer; white-space:nowrap;
   }
   .tab.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+
+  /* A–Z snelspringbalk */
+  #azbar{
+    display:flex; gap:3px; overflow-x:auto; padding:8px 0 2px;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  #azbar::-webkit-scrollbar{display:none}
+  #azbar button{
+    flex:none; min-width:24px; height:26px; padding:0 4px;
+    border:1px solid var(--line); background:var(--card); color:var(--accent);
+    border-radius:7px; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  #azbar button:active{background:var(--accent); color:#fff}
+  @media (prefers-color-scheme: dark){ #azbar button{color:#e0949e} }
+
+  /* verras me-kaart */
+  #surprise{
+    margin-top:12px; background:var(--card); border:1.5px solid var(--accent);
+    border-radius:14px; padding:12px 14px;
+  }
+  #surprise .slabel{font-size:12px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.04em}
+  #surprise .title{font-size:17px; font-weight:600; margin-top:4px; line-height:1.3}
+  #surprise .author{font-size:14px; color:var(--accent); margin-top:2px}
+  @media (prefers-color-scheme: dark){ #surprise .author{color:#e0949e} }
+  #surprise .extra{font-size:13px; color:var(--muted); margin-top:4px; line-height:1.35}
+  #surprise .srow{display:flex; gap:10px; margin-top:12px}
+  #surprise .srow button{
+    border:1px solid var(--line); background:var(--bg); color:var(--text);
+    border-radius:10px; padding:8px 12px; font-size:14px; cursor:pointer;
+  }
+  #surprise .srow .again{background:var(--accent); color:#fff; border-color:var(--accent)}
+
+  /* cijfers / statistiek */
+  .stats{padding:6px 0 0}
+  .stattiles{display:flex; gap:10px; margin:8px 0 4px}
+  .stattile{
+    flex:1; background:var(--card); border:1px solid var(--line);
+    border-radius:12px; padding:12px; text-align:center;
+  }
+  .stattile .num{font-size:24px; font-weight:700}
+  .stattile .lbl{font-size:12px; color:var(--muted); margin-top:2px}
+  .stats h3{font-size:15px; margin:20px 0 8px}
+  .toplist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+  .toplist li{
+    display:flex; align-items:center; gap:8px; background:var(--card);
+    border:1px solid var(--line); border-radius:10px; padding:8px 12px; font-size:14px;
+  }
+  .toplist .cnt{margin-left:auto; font-weight:700; color:var(--accent)}
+  @media (prefers-color-scheme: dark){ .toplist .cnt{color:#e0949e} }
+  .stats .goodnews{color:var(--muted); font-size:14px; padding:6px 2px}
 
   /* verlanglijst */
   .wishadd{display:flex; flex-direction:column; gap:8px; margin:14px 0 6px}
@@ -266,8 +317,9 @@
   <!-- Zoekscherm -->
   <section id="app" class="hidden">
     <div class="tabs">
-      <button id="tabBooks" class="tab active">Mijn boeken</button>
+      <button id="tabBooks" class="tab active">Boeken</button>
       <button id="tabWish" class="tab">Wil ik nog <span id="wishCount"></span></button>
+      <button id="tabStats" class="tab">Cijfers</button>
     </div>
     <div id="collection">
     <div class="searchwrap">
@@ -283,12 +335,15 @@
         <span class="count" id="count"></span>
         <span id="updated"></span>
         <span class="actions">
+          <button id="btnSurprise" title="Verras me">🎲 Verras me</button>
           <button id="btnSort" title="Sorteervolgorde wisselen"></button>
           <button id="btnRefresh">↻ Vernieuwen</button>
         </span>
       </div>
+      <div id="azbar" class="hidden" aria-label="Snel naar letter"></div>
       <div id="loadError" class="notice hidden"></div>
     </div>
+    <div id="surprise" class="hidden"></div>
     <ul class="results" id="results"></ul>
     <div class="empty hidden" id="empty">Geen boeken gevonden.<br>Dit boek heb je dus nog niet 🙂</div>
     </div><!-- /collection -->
@@ -303,6 +358,8 @@
       <ul class="results" id="wishItems"></ul>
       <div class="empty hidden" id="wishEmpty">Nog niets op je verlanglijst.<br>Voeg boeken toe die je nog zoekt 🔎</div>
     </div>
+
+    <div id="stats" class="hidden"></div>
   </section>
 
 </main>
@@ -536,6 +593,7 @@ function sortBooks(){
 function loadFromText(text){
   books = toBooks(parseCSV(text));
   sortBooks();
+  renderAzBar();
   applySearch();
 }
 
@@ -595,6 +653,7 @@ function applySearch(){
   } else {
     chip.classList.add('hidden');
   }
+  $('azbar').classList.toggle('hidden', !!filtering || books.length === 0);
   render();
 }
 
@@ -655,14 +714,86 @@ function render(){
   ul.innerHTML = html;
 }
 
-/* ---------- Tabs (boeken / verlanglijst) ---------- */
+/* ---------- A–Z snelspringbalk ---------- */
+function firstLetterOf(b){
+  const s = sortMode === 'titel' ? norm(b.title) : (b.sortKey || norm(b.title));
+  const c = (s || '').charAt(0).toUpperCase();
+  return (c >= 'A' && c <= 'Z') ? c : '#';
+}
+function renderAzBar(){
+  const present = [], seen = {};
+  books.forEach(b => { const l = firstLetterOf(b); if(!seen[l]){ seen[l] = 1; present.push(l); } });
+  present.sort();
+  $('azbar').innerHTML = present.map(l => '<button data-letter="' + l + '">' + l + '</button>').join('');
+}
+function jumpToLetter(letter){
+  const i = shown.findIndex(b => firstLetterOf(b) === letter);
+  const el = i >= 0 ? $('results').children[i] : null;
+  if(!el) return;
+  const header = document.querySelector('header').getBoundingClientRect().height;
+  const sw = document.querySelector('.searchwrap').getBoundingClientRect().height;
+  const y = el.getBoundingClientRect().top + window.scrollY - header - sw - 6;
+  window.scrollTo(0, Math.max(0, y));
+}
+
+/* ---------- Verras me ---------- */
+function surpriseMe(){
+  if(!books.length) return;
+  const b = books[Math.floor(Math.random() * books.length)];
+  let extra = '';
+  if(b.orig)  extra += '<div class="extra">Oorspronkelijke titel: ' + esc(b.orig) + '</div>';
+  if(b.notes) extra += '<div class="extra">' + esc(b.notes) + '</div>';
+  $('surprise').innerHTML =
+    '<div class="slabel">🎲 Verrassing uit je kast</div>' +
+    '<div class="title">' + esc(b.title || '(zonder titel)') + '</div>' +
+    (b.author ? '<div class="author">' + esc(b.author) + '</div>' : '') + extra +
+    '<div class="srow"><button class="again" id="surpriseAgain">Nog een 🎲</button>' +
+    '<button id="surpriseClose">Sluiten</button></div>';
+  $('surprise').classList.remove('hidden');
+}
+
+/* ---------- Cijfers / statistiek ---------- */
+function renderStats(){
+  const n = books.length;
+  const counts = {};
+  books.forEach(b => { if(b.author) counts[b.author] = (counts[b.author] || 0) + 1; });
+  const authors = Object.keys(counts);
+  const top = authors.map(a => [a, counts[a]])
+    .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).slice(0, 5);
+  const dc = {};
+  books.forEach(b => { const k = wishKey(b.title, b.author); (dc[k] = dc[k] || { n: 0, b: b }).n++; });
+  const dups = Object.keys(dc).map(k => dc[k]).filter(c => c.n > 1);
+
+  let h = '<div class="stats"><div class="stattiles">' +
+    '<div class="stattile"><div class="num">' + n + '</div><div class="lbl">boeken</div></div>' +
+    '<div class="stattile"><div class="num">' + authors.length + '</div><div class="lbl">auteurs</div></div>' +
+    '</div>';
+  if(top.length){
+    h += '<h3>Meest in je kast</h3><ul class="toplist">' +
+      top.map(t => '<li><span>' + esc(t[0]) + '</span><span class="cnt">' + t[1] + '</span></li>').join('') +
+      '</ul>';
+  }
+  h += '<h3>Mogelijk dubbel ingevoerd' + (dups.length ? ' (' + dups.length + ')' : '') + '</h3>';
+  if(dups.length){
+    h += '<ul class="toplist">' + dups.map(c =>
+      '<li><span>' + esc(c.b.title || '(zonder titel)') + (c.b.author ? ' — ' + esc(c.b.author) : '') +
+      '</span><span class="cnt">' + c.n + '×</span></li>').join('') + '</ul>';
+  } else {
+    h += '<div class="goodnews">Geen dubbele titels gevonden 🎉</div>';
+  }
+  $('stats').innerHTML = h + '</div>';
+}
+
+/* ---------- Tabs (boeken / verlanglijst / cijfers) ---------- */
 function showTab(which){
-  const onBooks = which === 'books';
-  $('collection').classList.toggle('hidden', !onBooks);
-  $('wishlist').classList.toggle('hidden', onBooks);
-  $('tabBooks').classList.toggle('active', onBooks);
-  $('tabWish').classList.toggle('active', !onBooks);
-  if(!onBooks) renderWish();
+  $('collection').classList.toggle('hidden', which !== 'books');
+  $('wishlist').classList.toggle('hidden', which !== 'wish');
+  $('stats').classList.toggle('hidden', which !== 'stats');
+  $('tabBooks').classList.toggle('active', which === 'books');
+  $('tabWish').classList.toggle('active', which === 'wish');
+  $('tabStats').classList.toggle('active', which === 'stats');
+  if(which === 'wish') renderWish();
+  if(which === 'stats') renderStats();
 }
 
 /* ---------- Instellingen / lijstbeheer ---------- */
@@ -692,6 +823,7 @@ function showApp(){
   $('titleChev').textContent = getSources().length ? ' ▾' : '';
   $('btnSheet').classList.toggle('hidden', !(src && src.edit));
   $('updated').textContent = src ? fmtUpdated(localStorage.getItem(updKey(src.id))) : '';
+  $('surprise').classList.add('hidden');
   const cached = src ? localStorage.getItem(dataKey(src.id)) : null;
   if(cached){ loadFromText(cached); } else { books = []; applySearch(); }
   refresh(false);
@@ -785,6 +917,7 @@ $('btnSort').addEventListener('click', () => {
   localStorage.setItem(LS.sort, sortMode);
   updateSortBtn();
   sortBooks();
+  renderAzBar();
   applySearch();
 });
 $('results').addEventListener('click', e => {
@@ -824,6 +957,24 @@ document.addEventListener('click', e => {
 /* tabs */
 $('tabBooks').addEventListener('click', () => showTab('books'));
 $('tabWish').addEventListener('click', () => showTab('wish'));
+$('tabStats').addEventListener('click', () => showTab('stats'));
+
+/* A–Z snelspringbalk */
+$('azbar').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if(b) jumpToLetter(b.dataset.letter);
+});
+
+/* verras me */
+$('btnSurprise').addEventListener('click', () => {
+  showTab('books');
+  surpriseMe();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+$('surprise').addEventListener('click', e => {
+  if(e.target.closest('#surpriseAgain')) surpriseMe();
+  else if(e.target.closest('#surpriseClose')) $('surprise').classList.add('hidden');
+});
 
 /* verlanglijst */
 $('wishAddBtn').addEventListener('click', () => {
