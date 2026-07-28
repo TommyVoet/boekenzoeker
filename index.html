@@ -454,6 +454,25 @@ function migrate(){
   }
 }
 
+/* Bestaande lijsten die nog de oude gviz-export gebruiken omzetten naar
+   export?format=csv (gviz verminkt sommige bestanden: hele kolom in één cel). */
+function upgradeSources(){
+  const a = getSources();
+  let changed = false;
+  a.forEach(s => {
+    if(s.csv && s.csv.indexOf('/gviz/tq') !== -1){
+      const cfg = s.sheetRaw ? interpretSheetUrl(s.sheetRaw) : null;
+      if(cfg && cfg.csv && cfg.csv.indexOf('/export?format=csv') !== -1){
+        s.csv = cfg.csv;
+        s.csvAlt = cfg.csvAlt || '';
+        s.edit = s.edit || cfg.edit || '';
+        changed = true;
+      }
+    }
+  });
+  if(changed) setSources(a);
+}
+
 /* ---------- Verlanglijst ("wil ik nog"), globaal per toestel ---------- */
 function getWish(){ try{ return JSON.parse(localStorage.getItem(LS.wish)) || []; }catch(e){ return []; } }
 function setWish(a){ localStorage.setItem(LS.wish, JSON.stringify(a)); }
@@ -521,12 +540,16 @@ function interpretSheetUrl(raw){
     };
   }
   // Gewone Sheet-link: .../spreadsheets/d/<id>/...
+  // export?format=csv geeft de kolommen trouw terug; gviz verminkt sommige
+  // bestanden (hele kolom in één cel) — daarom gviz alleen als reserve.
   m = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
   if(m){
     const gid = (url.match(/[?&#]gid=(\d+)/) || [])[1];
+    const base = 'https://docs.google.com/spreadsheets/d/' + m[1];
     return {
-      csv: 'https://docs.google.com/spreadsheets/d/' + m[1] + '/gviz/tq?tqx=out:csv' + (gid ? '&gid=' + gid : ''),
-      edit: 'https://docs.google.com/spreadsheets/d/' + m[1] + '/edit'
+      csv: base + '/export?format=csv' + (gid ? '&gid=' + gid : ''),
+      csvAlt: base + '/gviz/tq?tqx=out:csv' + (gid ? '&gid=' + gid : ''),
+      edit: base + '/edit'
     };
   }
   // Iets anders (bijv. directe CSV-link): gebruik zoals opgegeven.
@@ -637,10 +660,19 @@ async function refresh(manual){
   $('btnRefresh').disabled = true;
   $('btnRefresh').textContent = 'Bezig…';
   try{
-    const res = await fetch(src.csv, { cache: 'no-store' });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    if(text.trim().startsWith('<')) throw new Error('De link geeft geen CSV terug');
+    const urls = [src.csv, src.csvAlt].filter(Boolean);
+    let text = null, lastErr = null;
+    for(const u of urls){
+      try{
+        const res = await fetch(u, { cache: 'no-store' });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        const t = await res.text();
+        if(t.trim().startsWith('<')) throw new Error('De link geeft geen CSV terug');
+        text = t;
+        break;
+      }catch(e){ lastErr = e; }
+    }
+    if(text === null) throw (lastErr || new Error('Ophalen mislukt'));
     localStorage.setItem(dataKey(src.id), text);
     localStorage.setItem(updKey(src.id), String(Date.now()));
     loadFromText(text);
@@ -877,6 +909,7 @@ function saveSetup(){
   src.name = $('inName').value.trim();
   src.sheetRaw = raw;
   src.csv = cfg.csv;
+  src.csvAlt = cfg.csvAlt || '';
   src.edit = cfg.edit || '';
   upsertSource(src);
   localStorage.setItem(LS.active, src.id);
@@ -913,7 +946,7 @@ function initFromQuery(){
         if(name){ existing.name = name; upsertSource(existing); }
         localStorage.setItem(LS.active, existing.id);
       } else {
-        const src = { id: newId(), name: name || '', sheetRaw: sheet, csv: cfg.csv, edit: cfg.edit || '' };
+        const src = { id: newId(), name: name || '', sheetRaw: sheet, csv: cfg.csv, csvAlt: cfg.csvAlt || '', edit: cfg.edit || '' };
         upsertSource(src);
         localStorage.setItem(LS.active, src.id);
       }
@@ -1026,6 +1059,7 @@ $('btnCopyShare').addEventListener('click', async () => {
 });
 
 migrate();
+upgradeSources();
 initFromQuery();
 updateSortBtn();
 updateWishCount();
